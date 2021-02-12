@@ -69,6 +69,9 @@ class ServerRequestCreatorFactoryTest extends TestCase
         $this->assertInstanceOf(ServerRequest::class, $serverRequestCreator->createServerRequestFromGlobals());
     }
 
+    /**
+     * @runInSeparateProcess - Psr17FactoryProvider::setFactories breaks other tests
+     */
     public function testDetermineServerRequestCreatorThrowsRuntimeException()
     {
         $this->expectException(RuntimeException::class);
@@ -90,8 +93,12 @@ class ServerRequestCreatorFactoryTest extends TestCase
         $this->assertInstanceOf(SlimServerRequest::class, $serverRequestCreator->createServerRequestFromGlobals());
     }
 
-    public function testSetServerRequestCreator()
+    /**
+     * @runInSeparateProcess - ServerRequestCreatorFactory::setServerRequestCreator breaks other tests
+     */
+    public function testSetServerRequestCreatorWithoutDecorators()
     {
+        ServerRequestCreatorFactory::setSlimHttpDecoratorsAutomaticDetection(false);
         $serverRequestProphecy = $this->prophesize(ServerRequestInterface::class);
 
         $serverRequestCreatorProphecy = $this->prophesize(ServerRequestCreatorInterface::class);
@@ -105,5 +112,26 @@ class ServerRequestCreatorFactoryTest extends TestCase
         $serverRequestCreator = ServerRequestCreatorFactory::create();
 
         $this->assertSame($serverRequestProphecy->reveal(), $serverRequestCreator->createServerRequestFromGlobals());
+    }
+
+    /**
+     * @runInSeparateProcess - ServerRequestCreatorFactory::setServerRequestCreator breaks other tests
+     */
+    public function testSetServerRequestCreatorWithDecorators()
+    {
+        ServerRequestCreatorFactory::setSlimHttpDecoratorsAutomaticDetection(true);
+        $serverRequestProphecy = $this->prophesize(ServerRequestInterface::class);
+
+        $serverRequestCreatorProphecy = $this->prophesize(ServerRequestCreatorInterface::class);
+        $serverRequestCreatorProphecy
+            ->createServerRequestFromGlobals()
+            ->willReturn($serverRequestProphecy->reveal())
+            ->shouldBeCalledOnce();
+
+        ServerRequestCreatorFactory::setServerRequestCreator($serverRequestCreatorProphecy->reveal());
+
+        $serverRequestCreator = ServerRequestCreatorFactory::create();
+
+        $this->assertInstanceOf(ServerRequest::class, $serverRequestCreator->createServerRequestFromGlobals());
     }
 }

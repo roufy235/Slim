@@ -84,6 +84,9 @@ class AppFactoryTest extends TestCase
         $this->assertInstanceOf(DecoratedResponseFactory::class, $app->getResponseFactory());
     }
 
+    /**
+     * @runInSeparateProcess - Psr17FactoryProvider::setFactories breaks other tests
+     */
     public function testDetermineResponseFactoryThrowsRuntimeException()
     {
         $this->expectException(RuntimeException::class);
@@ -103,6 +106,9 @@ class AppFactoryTest extends TestCase
         $this->assertInstanceOf(SlimResponseFactory::class, AppFactory::determineResponseFactory());
     }
 
+    /**
+     * @runInSeparateProcess - Psr17FactoryProvider::setFactories breaks other tests
+     */
     public function testResponseFactoryIsStillReturnedIfStreamFactoryIsNotAvailable()
     {
         Psr17FactoryProvider::setFactories([MockPsr17FactoryWithoutStreamFactory::class]);
@@ -113,6 +119,9 @@ class AppFactoryTest extends TestCase
         $this->assertInstanceOf(SlimResponseFactory::class, $app->getResponseFactory());
     }
 
+    /**
+     * @runInSeparateProcess - AppFactory::setResponseFactory breaks other tests
+     */
     public function testAppIsCreatedWithInstancesFromSetters()
     {
         $responseFactoryProphecy = $this->prophesize(ResponseFactoryInterface::class);
@@ -166,6 +175,10 @@ class AppFactoryTest extends TestCase
         );
     }
 
+    /**
+     * @runInSeparateProcess - AppFactory::create saves $responseFactory into static::$responseFactory,
+     *                         this breaks other tests
+     */
     public function testAppIsCreatedWithInjectedInstancesFromFunctionArguments()
     {
         $responseFactoryProphecy = $this->prophesize(ResponseFactoryInterface::class);
@@ -213,6 +226,9 @@ class AppFactoryTest extends TestCase
         );
     }
 
+    /**
+     * @runInSeparateProcess - AppFactory::setResponseFactory breaks other tests
+     */
     public function testResponseAndStreamFactoryIsBeingInjectedInDecoratedResponseFactory()
     {
         $responseProphecy = $this->prophesize(ResponseInterface::class);
@@ -316,5 +332,38 @@ class AppFactoryTest extends TestCase
         $this->assertSame($app->getRouteCollector(), $routeCollectorProphecy->reveal());
         $this->assertSame($app->getRouteResolver(), $routeResolverProphecy->reveal());
         $this->assertSame($app->getMiddlewareDispatcher(), $middlewareDispatcherProphecy->reveal());
+    }
+
+    public function testCreateAppWithEmptyContainer()
+    {
+        $containerProphecy = $this->prophesize(ContainerInterface::class);
+
+        $containerProphecy
+            ->has(ResponseFactoryInterface::class)
+            ->willReturn(false)
+            ->shouldBeCalledOnce();
+
+        $containerProphecy
+            ->has(CallableResolverInterface::class)
+            ->willReturn(false)
+            ->shouldBeCalledOnce();
+
+        $containerProphecy
+            ->has(RouteCollectorInterface::class)
+            ->willReturn(false)
+            ->shouldBeCalledOnce();
+
+        $containerProphecy
+            ->has(RouteResolverInterface::class)
+            ->willReturn(false)
+            ->shouldBeCalledOnce();
+
+        $containerProphecy
+            ->has(MiddlewareDispatcherInterface::class)
+            ->willReturn(false)
+            ->shouldBeCalledOnce();
+
+        AppFactory::setSlimHttpDecoratorsAutomaticDetection(false);
+        AppFactory::createFromContainer($containerProphecy->reveal());
     }
 }
